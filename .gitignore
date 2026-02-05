@@ -1,0 +1,25 @@
+# Environment
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Bun
+bun.lockb
+
+# Runtime files
+*.lock
+*.log
+temp/
+uploads/
+session.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
