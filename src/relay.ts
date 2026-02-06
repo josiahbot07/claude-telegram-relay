@@ -20,6 +20,9 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const ALLOWED_USER_ID = process.env.TELEGRAM_USER_ID || "";
 const CLAUDE_PATH = process.env.CLAUDE_PATH || "claude";
 const RELAY_DIR = process.env.RELAY_DIR || join(process.env.HOME || "~", ".claude-relay");
+const CLAUDE_WORKING_DIR = process.env.CLAUDE_WORKING_DIR || "/Users/motbot/workspace/auto-injury-assistance";
+const AUTONOMOUS_MODE = process.env.AUTONOMOUS_MODE === "true";
+const AUDIT_LOG_DIR = join(RELAY_DIR, "audit");
 
 // Directories
 const TEMP_DIR = join(RELAY_DIR, "temp");
@@ -116,6 +119,22 @@ if (!BOT_TOKEN) {
 // Create directories
 await mkdir(TEMP_DIR, { recursive: true });
 await mkdir(UPLOADS_DIR, { recursive: true });
+await mkdir(AUDIT_LOG_DIR, { recursive: true });
+
+// Validate autonomous mode configuration
+if (AUTONOMOUS_MODE) {
+  console.log("\n⚠️  AUTONOMOUS MODE ENABLED ⚠️");
+  console.log(`Working directory: ${CLAUDE_WORKING_DIR}`);
+  console.log("Claude will execute commands without permission prompts\n");
+
+  // Verify working directory exists
+  try {
+    await readFile(join(CLAUDE_WORKING_DIR, ".git", "config"), "utf-8");
+  } catch {
+    console.error(`ERROR: CLAUDE_WORKING_DIR does not exist or is not a git repo: ${CLAUDE_WORKING_DIR}`);
+    process.exit(1);
+  }
+}
 
 // Acquire lock
 if (!(await acquireLock())) {
@@ -159,15 +178,36 @@ async function callClaude(
 
   args.push("--output-format", "text");
 
+  // Autonomous mode configuration
+  if (AUTONOMOUS_MODE) {
+    args.push("--permission-mode", "dontAsk");
+    args.push("--add-dir", CLAUDE_WORKING_DIR);
+  }
+
   console.log(`Calling Claude: ${prompt.substring(0, 50)}...`);
+  if (AUTONOMOUS_MODE) {
+    console.log(`Working directory: ${CLAUDE_WORKING_DIR}`);
+    console.log(`Autonomous mode: enabled`);
+  }
+
+  // Audit log
+  await auditLog({
+    timestamp: new Date().toISOString(),
+    prompt: prompt.substring(0, 200),
+    sessionId: session.sessionId,
+    workingDir: CLAUDE_WORKING_DIR,
+    autonomousMode: AUTONOMOUS_MODE,
+  });
 
   try {
     const proc = spawn(args, {
       stdout: "pipe",
       stderr: "pipe",
+      cwd: CLAUDE_WORKING_DIR,
       env: {
         ...process.env,
-        // Pass through any env vars Claude might need
+        PWD: CLAUDE_WORKING_DIR,
+        CLAUDE_ALLOWED_DIR: CLAUDE_WORKING_DIR,
       },
     });
 
@@ -193,6 +233,27 @@ async function callClaude(
   } catch (error) {
     console.error("Spawn error:", error);
     return `Error: Could not run Claude CLI`;
+  }
+}
+
+// ============================================================
+// AUDIT LOGGING
+// ============================================================
+
+interface AuditLogEntry {
+  timestamp: string;
+  prompt: string;
+  sessionId: string | null;
+  workingDir: string;
+  autonomousMode: boolean;
+}
+
+async function auditLog(entry: AuditLogEntry): Promise<void> {
+  try {
+    const logFile = join(AUDIT_LOG_DIR, `audit-${new Date().toISOString().split('T')[0]}.json`);
+    await writeFile(logFile, JSON.stringify(entry) + '\n', { flag: 'a' });
+  } catch (error) {
+    console.error("Audit log error:", error);
   }
 }
 
@@ -324,10 +385,24 @@ function buildPrompt(userMessage: string): string {
     minute: "2-digit",
   });
 
-  return `
+  let contextInfo = `
 You are responding via Telegram. Keep responses concise.
 
-Current time: ${timeStr}
+Current time: ${timeStr}`;
+
+  if (AUTONOMOUS_MODE) {
+    contextInfo += `
+
+AUTONOMOUS MODE ACTIVE:
+- You are operating in autonomous mode with full permissions
+- Working directory: ${CLAUDE_WORKING_DIR}
+- You can execute commands without asking for permission
+- IMPORTANT: You are restricted to working ONLY within ${CLAUDE_WORKING_DIR}
+- Do NOT access files or directories outside this scope
+- All file operations must be within this directory`;
+  }
+
+  return `${contextInfo}
 
 User: ${userMessage}
 `.trim();

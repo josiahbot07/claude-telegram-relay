@@ -9,26 +9,28 @@
     <!-- Command to run -->
     <key>ProgramArguments</key>
     <array>
-        <!-- UPDATE THIS: Path to bun -->
-        <string>/Users/YOUR_USERNAME/.bun/bin/bun</string>
+        <string>/Users/motbot/.bun/bin/bun</string>
         <string>run</string>
         <string>src/relay.ts</string>
     </array>
 
     <!-- Working directory -->
     <key>WorkingDirectory</key>
-    <!-- UPDATE THIS: Path to your relay directory -->
-    <string>/Users/YOUR_USERNAME/claude-telegram-relay</string>
+    <string>/Users/motbot/workspace/claude-telegram-relay</string>
 
     <!-- Environment variables -->
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <!-- UPDATE THIS: Include paths to bun, node, claude -->
-        <string>/Users/YOUR_USERNAME/.bun/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>/Users/motbot/.bun/bin:/Users/motbot/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HOME</key>
-        <!-- UPDATE THIS -->
-        <string>/Users/YOUR_USERNAME</string>
+        <string>/Users/motbot</string>
+        <key>CLAUDE_WORKING_DIR</key>
+        <string>/Users/motbot/workspace/auto-injury-assistance</string>
+        <key>AUTONOMOUS_MODE</key>
+        <string>true</string>
+        <key>CLAUDE_PATH</key>
+        <string>/Users/motbot/.local/bin/claude</string>
     </dict>
 
     <!-- Start when loaded -->
@@ -41,12 +43,10 @@
 
     <!-- Log files -->
     <key>StandardOutPath</key>
-    <!-- UPDATE THIS -->
-    <string>/Users/YOUR_USERNAME/Library/Logs/claude-telegram-relay.log</string>
+    <string>/Users/motbot/Library/Logs/claude-telegram-relay.log</string>
 
     <key>StandardErrorPath</key>
-    <!-- UPDATE THIS -->
-    <string>/Users/YOUR_USERNAME/Library/Logs/claude-telegram-relay.error.log</string>
+    <string>/Users/motbot/Library/Logs/claude-telegram-relay.error.log</string>
 
     <!-- Wait 10 seconds before restarting after crash -->
     <key>ThrottleInterval</key>
