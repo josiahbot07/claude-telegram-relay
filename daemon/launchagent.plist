@@ -22,11 +22,11 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/motbot/.bun/bin:/Users/motbot/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>/opt/homebrew/bin:/Users/motbot/.bun/bin:/Users/motbot/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HOME</key>
         <string>/Users/motbot</string>
         <key>CLAUDE_WORKING_DIR</key>
-        <string>/Users/motbot/workspace/auto-injury-assistance</string>
+        <string>/Users/motbot/workspace/family-built</string>
         <key>AUTONOMOUS_MODE</key>
         <string>true</string>
         <key>CLAUDE_PATH</key>

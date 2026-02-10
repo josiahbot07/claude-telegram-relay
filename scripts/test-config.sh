@@ -53,6 +53,13 @@ else
     echo "   ⚠ CLAUDE_WORKING_DIR not set"
 fi
 
+# Check Convex deploy key
+if [ -n "$CONVEX_DEPLOY_KEY" ]; then
+    echo "   ✓ CONVEX_DEPLOY_KEY set"
+else
+    echo "   ⚠ CONVEX_DEPLOY_KEY not set (Convex backend deploys won't work)"
+fi
+
 # Check target directory
 echo ""
 echo "3. Checking target directory..."
@@ -66,6 +73,12 @@ if [ ! -d "$CLAUDE_WORKING_DIR/.git" ]; then
     echo "   ⚠ Warning: Not a git repository"
 else
     echo "   ✓ Git repository confirmed"
+fi
+
+if [ ! -d "$CLAUDE_WORKING_DIR/convex" ]; then
+    echo "   ⚠ Warning: No convex/ directory found in target project"
+else
+    echo "   ✓ Convex directory found: $CLAUDE_WORKING_DIR/convex"
 fi
 
 # Check Claude CLI
