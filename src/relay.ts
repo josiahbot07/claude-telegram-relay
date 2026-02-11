@@ -32,7 +32,7 @@ interface UserRole {
 
 const USER_ROLES: Record<string, UserRole> = {
   "8493500703": {
-    name: "Mot",
+    name: "Saia",
     role: "owner",
     allowedTools: "Bash,Edit,Read,Glob,Grep,Write",
     systemPrompt: "",  // uses default autonomous prompt
@@ -277,7 +277,7 @@ async function trackMessage(text: string, userName: string, userId: string, chat
 
 async function trackResponse(response: string): Promise<void> {
   session.lastBotResponse = response.substring(0, 2000);
-  session.transcript += `Assistant: ${response}\n\n`;
+  session.transcript += `Assistant: ${stripMarkdown(response)}\n\n`;
 
   // Truncate from beginning if transcript exceeds cap
   if (session.transcript.length > TRANSCRIPT_MAX_BYTES) {
@@ -874,6 +874,18 @@ bot.on("message:document", async (ctx) => {
 // ============================================================
 // HELPERS
 // ============================================================
+
+/** Strip markdown formatting so transcripts are stored as plain text. */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/```\w*\n?/g, "")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/(?<!\w)\*(?!\s)(.+?)(?<!\s)\*(?!\w)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^[-*_]{3,}\s*$/gm, "");
+}
 
 /**
  * Convert Markdown to Telegram-supported HTML.
