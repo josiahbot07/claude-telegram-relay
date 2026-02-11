@@ -8,7 +8,10 @@
     "check": "tsc --noEmit",
     "on": "bun run check && launchctl unload ~/Library/LaunchAgents/com.claude.telegram-relay.plist 2>/dev/null; launchctl load ~/Library/LaunchAgents/com.claude.telegram-relay.plist",
     "off": "launchctl unload ~/Library/LaunchAgents/com.claude.telegram-relay.plist 2>/dev/null || true",
-    "restart": "bash scripts/restart-daemon.sh"
+    "restart": "bash scripts/restart-daemon.sh",
+    "briefing": "bun run scripts/morning-briefing.ts",
+    "briefing:on": "launchctl unload ~/Library/LaunchAgents/com.claude.morning-briefing.plist 2>/dev/null; cp daemon/morning-briefing.plist ~/Library/LaunchAgents/com.claude.morning-briefing.plist && launchctl load ~/Library/LaunchAgents/com.claude.morning-briefing.plist",
+    "briefing:off": "launchctl unload ~/Library/LaunchAgents/com.claude.morning-briefing.plist 2>/dev/null || true"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",

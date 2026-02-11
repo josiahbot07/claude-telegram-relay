@@ -677,6 +677,17 @@ bot.command("status", async (ctx) => {
   await ctx.reply(status, { parse_mode: "HTML" });
 });
 
+// Chat ID helper — type /chatid in any chat to discover its ID
+bot.command("chatid", async (ctx) => {
+  const chatId = ctx.chat.id;
+  const chatType = ctx.chat.type;
+  const chatTitle = "title" in ctx.chat ? ctx.chat.title : "DM";
+  await ctx.reply(
+    `<b>Chat Info</b>\nID: <code>${chatId}</code>\nType: ${chatType}\nTitle: ${chatTitle}\n\nAdd to .env: TELEGRAM_GROUP_CHAT_ID=${chatId}`,
+    { parse_mode: "HTML" }
+  );
+});
+
 // Text messages
 bot.on("message:text", async (ctx) => {
   if (isGroupChat(ctx) && !shouldRespondInGroup(ctx)) return;
@@ -1053,7 +1064,7 @@ Rules:
 
   return `${contextInfo}
 
-User: ${userMessage}
+${role?.name || 'User'}: ${userMessage}
 `.trim();
 }
 

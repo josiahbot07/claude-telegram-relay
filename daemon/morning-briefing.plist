@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.claude.morning-briefing</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/motbot/.bun/bin/bun</string>
+        <string>run</string>
+        <string>scripts/morning-briefing.ts</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/motbot/workspace/claude-telegram-relay</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/Users/motbot/.bun/bin:/Users/motbot/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/motbot</string>
+        <key>CLAUDE_PATH</key>
+        <string>/Users/motbot/.local/bin/claude</string>
+    </dict>
+
+    <!-- Daily at 5:30 AM -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>5</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/motbot/Library/Logs/morning-briefing.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/motbot/Library/Logs/morning-briefing.error.log</string>
+</dict>
+</plist>
