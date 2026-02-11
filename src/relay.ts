@@ -7,7 +7,7 @@
  * Run: bun run src/relay.ts
  */
 
-import { Bot, Context } from "grammy";
+import { Bot, Context, HttpError } from "grammy";
 import { spawn } from "bun";
 import { writeFile, mkdir, readFile, unlink } from "fs/promises";
 import { join } from "path";
@@ -59,7 +59,9 @@ GIT & DEPLOY WORKFLOW:
 - If you edited any files inside convex/, run: npx convex deploy --yes
   - Run this BEFORE git push
   - If it fails, do not push — report the error instead
-- Push to main after committing — this triggers a live Netlify deploy`,
+- Push to main after committing — this triggers a live Netlify deploy
+
+TIER ADJUSTMENT: For your role, anything beyond a single-file text or config edit requires presenting a plan and waiting for confirmation before executing.`,
   },
 };
 
@@ -136,6 +138,7 @@ interface SessionState {
   chatId: string | null;
   userIds: string[];
   startedAt: string;
+  lastBotResponse: string | null;
 }
 
 function newSessionState(): SessionState {
@@ -147,6 +150,7 @@ function newSessionState(): SessionState {
     chatId: null,
     userIds: [],
     startedAt: new Date().toISOString(),
+    lastBotResponse: null,
   };
 }
 
@@ -272,6 +276,7 @@ async function trackMessage(text: string, userName: string, userId: string, chat
 }
 
 async function trackResponse(response: string): Promise<void> {
+  session.lastBotResponse = response.substring(0, 2000);
   session.transcript += `Assistant: ${response}\n\n`;
 
   // Truncate from beginning if transcript exceeds cap
@@ -468,7 +473,7 @@ bot.use(async (ctx, next) => {
 // CORE: Call Claude CLI
 // ============================================================
 
-const CLAUDE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const CLAUDE_TIMEOUT_MS = parseInt(process.env.CLAUDE_TIMEOUT_MS || String(10 * 60 * 1000));
 
 async function callClaude(
   prompt: string,
@@ -554,7 +559,7 @@ async function callClaude(
       } catch (err) {
         if (timedOut) {
           console.error(`Claude CLI timed out after ${CLAUDE_TIMEOUT_MS / 1000}s`);
-          return "Claude timed out after 5 minutes. Please try again.";
+          return `Claude timed out after ${Math.round(CLAUDE_TIMEOUT_MS / 60000)} minutes. Please try again.`;
         }
         throw err;
       } finally {
@@ -969,13 +974,17 @@ Current time: ${timeStr}`;
     contextInfo += `\n(Use this for continuity. Don't reference unless relevant.)`;
   }
 
+  if (session.lastBotResponse) {
+    contextInfo += `\n\nYOUR LAST RESPONSE (for conversation continuity):\n${session.lastBotResponse}`;
+  }
+
   if (AUTONOMOUS_MODE) {
     contextInfo += `
 
 AUTONOMOUS MODE ACTIVE:
 - You are operating in autonomous mode with full permissions
 - Working directory: ${CLAUDE_WORKING_DIR}
-- You can execute commands without asking for permission
+- You have full tool permissions, but classify each request by scope before acting (see EXECUTION TIERS below)
 - IMPORTANT: You are restricted to working ONLY within ${CLAUDE_WORKING_DIR}
 - Do NOT access files or directories outside this scope
 - All file operations must be within this directory
@@ -1004,7 +1013,25 @@ WHEN BOTH change:
 IF convex deploy FAILS:
   - Read the error carefully (TypeScript errors, schema issues, etc.)
   - Fix the issue, then retry: npx convex deploy --yes
-  - Report what failed and what you fixed`;
+  - Report what failed and what you fixed
+
+EXECUTION TIERS — classify every request before acting:
+
+TIER 1 (just do it): Reading/analyzing code, answering questions, text edits, typo fixes, config values, single-file changes under ~20 lines, styling tweaks.
+→ Execute immediately. Briefly report what you did.
+
+TIER 2 (announce then do): New features touching 1-3 files, bug fixes, adding components, git operations.
+→ Start with "To clarify, what you're asking for is [restate their request in plain terms]" then proceed immediately in the same response. Do not wait.
+
+TIER 3 (plan and wait): 4+ file changes, refactors, schema/DB changes, infrastructure, deleting significant code, anything you're uncertain about.
+→ Start with "To clarify, here's what you want done:" then present a short numbered plan of what you'll do. Do NOT execute yet. End with: "Does that sound right, or would you like to adjust anything?"
+
+Rules:
+- When in doubt between tiers, round up
+- If the user confirms (any affirmative: "yes", "that's right", "go ahead", "do it", "looks good", etc.) after a Tier 3 plan, execute it
+- Never ask for confirmation on Tier 1 or 2. Never skip confirmation on Tier 3
+- Do not mention tier numbers to the user — this is internal classification only
+- If something feels off about a request, say so — suggest a better approach`;
   }
 
   const role = getUserRole(userId);
@@ -1049,13 +1076,40 @@ async function sendResponse(ctx: Context, response: string): Promise<void> {
   }
 
   for (const chunk of chunks) {
-    try {
-      await ctx.reply(chunk, { parse_mode: "HTML" });
-    } catch (error) {
-      // Fallback: if HTML parsing fails, send as plain text
-      console.error("HTML parse_mode failed, falling back to plain text:", error);
-      await ctx.reply(chunk);
+    let retries = 2;
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        await ctx.reply(chunk, { parse_mode: "HTML" });
+        lastError = null;
+        break;
+      } catch (error) {
+        lastError = error;
+        if (error instanceof HttpError && attempt < retries) {
+          // Transient network error — wait and retry
+          console.error(`Network error sending chunk (attempt ${attempt + 1}/${retries + 1}), retrying...`, error.message);
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
+        }
+        // HTML parse error or final retry — fall back to plain text
+        console.error("HTML parse_mode failed, falling back to plain text:", error);
+        try {
+          await ctx.reply(chunk);
+          lastError = null;
+        } catch (plainError) {
+          lastError = plainError;
+          if (plainError instanceof HttpError && attempt < retries) {
+            console.error(`Network error on plain text fallback (attempt ${attempt + 1}/${retries + 1}), retrying...`);
+            await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+            continue;
+          }
+        }
+        break;
+      }
     }
+
+    if (lastError) throw lastError;
   }
 }
 

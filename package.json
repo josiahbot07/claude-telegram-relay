@@ -5,7 +5,8 @@
   "scripts": {
     "start": "bun run src/relay.ts",
     "dev": "bun run --watch src/relay.ts",
-    "on": "launchctl unload ~/Library/LaunchAgents/com.claude.telegram-relay.plist 2>/dev/null; launchctl load ~/Library/LaunchAgents/com.claude.telegram-relay.plist",
+    "check": "tsc --noEmit",
+    "on": "bun run check && launchctl unload ~/Library/LaunchAgents/com.claude.telegram-relay.plist 2>/dev/null; launchctl load ~/Library/LaunchAgents/com.claude.telegram-relay.plist",
     "off": "launchctl unload ~/Library/LaunchAgents/com.claude.telegram-relay.plist 2>/dev/null || true",
     "restart": "bash scripts/restart-daemon.sh"
   },
@@ -14,6 +15,7 @@
     "grammy": "^1.21.1"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "typescript": "^5"
   }
 }

@@ -15,6 +15,15 @@ if [ ! -f "$TARGET_PLIST" ]; then
     exit 1
 fi
 
+# Type check before restarting
+echo "Running type check..."
+cd "$(dirname "$0")/.."
+if ! bun run check; then
+    echo "✗ Type check failed. Fix errors before restarting."
+    exit 1
+fi
+echo "✓ Type check passed."
+
 # Unload
 echo "Stopping agent..."
 launchctl unload "$TARGET_PLIST" 2>/dev/null || true
